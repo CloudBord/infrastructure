@@ -20,6 +20,34 @@ spec:
         ports:
         - containerPort: 80
           hostPort: 33077
+        volumeMounts:
+        - name: secrets-store-inline
+          mountPath: "/mnt/secrets-store"
+          readOnly: true
+      volumes:
+      - name: secrets-store-inline
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "azure-cloudbord-kv"
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: azure-cloudbord-kv
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    keyvaultName: "cloudbord-kv"
+    objects:
+      array:  |
+        - |
+          objectName: ConnectionString-BoardsDB
+          objectType: secret
+          objectVersion: ""
+    tenantId: "0172c9f5-f568-42ac-9eb8-24ef84881faa"
 ---
 apiVersion: v1
 kind: Service
