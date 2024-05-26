@@ -14,9 +14,11 @@ spec:
       labels:
         app: whiteboard-service
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
       - name: whiteboard-service
         image: cloudbordcontainer.azurecr.io/whiteboard-service:latest
+        imagePullPolicy: "Always"
         ports:
         - containerPort: 80
           hostPort: 33077
@@ -57,7 +59,7 @@ metadata:
   name: whiteboard-loadbalancer
 spec:
   selector:
-    app: whiteboard-service-deployment
+    app: whiteboard-service
   ports:
   - protocol: TCP
     port: 33077
