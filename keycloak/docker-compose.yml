@@ -14,16 +14,17 @@ services:
     container_name: keycloak
     image: quay.io/keycloak/keycloak:24.0.1
     ports:
-      - 8181:8080
+      - 8080:8080
+    command: -v start-dev --import-realm
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-db/keycloak
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: postgres
-    command: -v start-dev
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
     volumes:
+      - ./config:/opt/keycloak/data/import
       - kc-data:/opt/jboss/keycloak/standalone/data
     depends_on:
       - keycloak-db
