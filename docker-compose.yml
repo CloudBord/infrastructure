@@ -1,0 +1,120 @@
+services:
+  front-end:
+    container_name: front-end
+    build:
+      context: ..\front-end
+      dockerfile: Dockerfile
+    environment:
+      API_URL: ${API_URL}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER}
+      AUTH_URL: ${AUTH_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+    ports:
+      - 3000:3000
+    depends_on:
+      - api-gateway
+    networks:
+      - frontend_net
+
+  api-gateway:
+    hostname: api-gateway
+    container_name: api-gateway
+    build:
+      context: ..\api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - 7200:8080
+      - 7201:8081
+    depends_on:
+      - whiteboard-service
+    networks:
+      - frontend_net
+      - api_net
+
+  whiteboard-service:
+    hostname: whiteboard-service
+    container_name: whiteboard-service
+    build:
+      context: ..\whiteboard-service
+      dockerfile: Dockerfile
+    ports:
+      - 7210:80
+    environment:
+      - ConnectionStrings__Npgsql=${WB_CONNECTION_STRING}
+    depends_on:
+      - whiteboard-db
+    networks:
+      - whiteboard_net
+      - api_net
+
+  whiteboard-db:
+    container_name: whiteboard-db
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${WB_DB}
+      POSTGRES_USER: ${WB_USERNAME}
+      POSTGRES_PASSWORD: ${WB_PASSWORD}
+    ports:
+      - 7215:5432
+    volumes:
+      - whiteboard-db-data:/var/lib/postgresql/data
+      - ./config/whiteboard/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - whiteboard_net
+    
+  keycloak:
+    hostname: keycloak
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:24.0.1
+    command: -v start-dev --import-realm
+    environment:
+      KC_DB: ${KC_DB}
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_END_SESSION_ENDPOINT: ${KEYCLOAK_END_SESSION_ENDPOINT}
+    ports:
+      - 8080:8080
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import
+      - keycloak-db-data:/opt/jboss/keycloak/standalone/data
+    depends_on:
+      - keycloak-db
+    networks:
+      - keycloak_net
+      - api_net
+      - frontend_net
+
+  keycloak-db:
+    container_name: keycloak-db
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready --username=postgres --dbname=keycloak"]
+        interval: 5s
+        timeout: 5s
+        retries: 3
+    networks:
+      - keycloak_net
+
+networks:
+  frontend_net:
+    driver: bridge
+  api_net:
+    driver: bridge
+  whiteboard_net:
+    driver: bridge
+  keycloak_net:
+    driver: bridge
+
+volumes:
+  keycloak-db-data:
+  whiteboard-db-data:
