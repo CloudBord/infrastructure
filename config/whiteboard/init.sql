@@ -18,3 +18,12 @@ INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
 VALUES ('20240615191510_InitialCreate', '8.0.6');
 
 COMMIT;
+
+START TRANSACTION;
+
+ALTER TABLE "Boards" ADD "BoardContents" text;
+
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+VALUES ('20240618214956_AddBoardContentsToBoard', '8.0.6');
+
+COMMIT;

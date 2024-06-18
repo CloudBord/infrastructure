@@ -57,7 +57,7 @@ services:
       - api_net
 
   whiteboard-db:
-    profiles: ["full", "backend"]
+    profiles: ["full", "backend", "dev"]
     container_name: whiteboard-db
     image: postgres:latest
     environment:
@@ -87,7 +87,7 @@ services:
       - api_net
     
   keycloak:
-    profiles: ["full", "backend"]
+    profiles: ["full", "backend", "dev"]
     hostname: keycloak
     container_name: keycloak
     image: quay.io/keycloak/keycloak:24.0.1
@@ -112,7 +112,7 @@ services:
       - frontend_net
 
   keycloak-db:
-    profiles: ["full", "backend"]
+    profiles: ["full", "backend", "dev"]
     container_name: keycloak-db
     image: postgres:latest
     environment:
