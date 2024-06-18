@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert --profile full -o kube
+    kompose.version: 1.34.0 (cbf2835db)
+  labels:
+    io.kompose.service: keycloak
+  name: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: keycloak
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert --profile full -o kube
+        kompose.version: 1.34.0 (cbf2835db)
+      labels:
+        io.kompose.service: keycloak
+    spec:
+      containers:
+        - args:
+            - -v
+            - start-dev
+            - --import-realm
+          env:
+            - name: KC_DB
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KC_DB
+            - name: KC_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KC_DB_URL
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KC_DB_USERNAME
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KC_DB_PASSWORD
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_PROXY
+              value: 'edge'
+          image: quay.io/keycloak/keycloak:24.0.1
+          name: keycloak
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /opt/keycloak/data/import
+              name: keycloak-cm0
+            - mountPath: /opt/jboss/keycloak/standalone/data
+              name: keycloak-db-data
+      hostname: keycloak
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            name: keycloak-cm0
+          name: keycloak-cm0
+        - name: keycloak-db-data
+          persistentVolumeClaim:
+            claimName: keycloak-db-data
