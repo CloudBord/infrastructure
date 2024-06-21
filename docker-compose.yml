@@ -55,6 +55,7 @@ services:
     networks:
       - whiteboard_net
       - api_net
+      - rabbitmq_net
 
   whiteboard-db:
     profiles: ["full", "backend", "dev"]
@@ -82,10 +83,59 @@ services:
     ports:
       - 7220:8080
       - 7221:8081
+    depends_on:
+      - session-db
+      - session-redis
     networks:
       - session_net
       - api_net
-    
+      - rabbitmq_net
+
+  session-redis:
+    profiles: ["full", "backend", "dev"]
+    container_name: redis-handler
+    image: redis/redis-stack:latest
+    environment:
+      - REDIS_ARGS=--requirepass ${REDIS_PW}
+    ports:
+      - 7225:6379
+      - 8001:8001
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+    volumes:
+      # - /local-data/:/data
+      - session-redis-data:/data
+    networks:
+      - session_net
+
+  session-db:
+    profiles: ["full", "backend", "dev"]
+    container_name: session-db
+    image: mongodb/mongodb-community-server
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=admin
+      - MONGODB_INITDB_ROOT_PASSWORD=badmin
+      - MONGO_INITDB_DATABASE=boardcontents
+    ports:
+      - 7226:27017
+    volumes:
+      - session-db-data:/data/db
+
+  #   container_name: session-db
+  #   image: postgres:latest
+  #   environment:
+  #     POSTGRES_DB: ${SB_DB}
+  #     POSTGRES_USER: ${SB_USERNAME}
+  #     POSTGRES_PASSWORD: ${SB_PASSWORD}
+  #   ports:
+  #     - 7226:5432
+  #   volumes:
+  #     - session-db-data:/var/lib/postgresql/data
+  #     - ./config/session/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - session_net
+  
+
   keycloak:
     profiles: ["full", "backend", "dev"]
     hostname: keycloak
@@ -128,6 +178,19 @@ services:
     networks:
       - keycloak_net
 
+  rabbitmq:
+    profiles: ["full", "backend", "dev"]
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: admin  
+      RABBITMQ_DEFAULT_PASS: badmin 
+    networks:
+      - rabbitmq_net
+
 networks:
   frontend_net:
     driver: bridge
@@ -139,7 +202,11 @@ networks:
     driver: bridge
   keycloak_net:
     driver: bridge
+  rabbitmq_net:
+    driver: bridge
 
 volumes:
   keycloak-db-data:
   whiteboard-db-data:
+  session-db-data:
+  session-redis-data:

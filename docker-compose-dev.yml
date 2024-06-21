@@ -1,28 +1,30 @@
 services:
-  # front-end:
-  #   container_name: front-end
-  #   build:
-  #     context: ..\front-end
-  #     dockerfile: Dockerfile
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-  #     AUTH_URL: ${AUTH_URL}
-  #     AUTH_SIGNOUT_URL: ${AUTH_SIGNOUT_URL}
-  #     AUTH_SECRET: ${AUTH_SECRET}
-  #     KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
-  #     KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
-  #     KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER}
-  #     KEYCLOAK_END_SESSION_ENDPOINT: ${KEYCLOAK_END_SESSION_ENDPOINT}
-  #   ports:
-  #     - 3000:3000
-  #   depends_on:
-  #     - api-gateway
-  #     - keycloak
-  #   networks:
-  #     - frontend_net
-  #     - keycloak_net
+  front-end:
+    profiles: ["full"]
+    container_name: front-end
+    build:
+      context: ..\front-end
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      AUTH_URL: ${AUTH_URL}
+      AUTH_SIGNOUT_URL: ${AUTH_SIGNOUT_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER}
+      KEYCLOAK_END_SESSION_ENDPOINT: ${KEYCLOAK_END_SESSION_ENDPOINT}
+    ports:
+      - 3000:3000
+    depends_on:
+      - api-gateway
+      - keycloak
+    networks:
+      - frontend_net
+      - keycloak_net
 
   api-gateway:
+    profiles: ["full", "backend"]
     hostname: api-gateway
     container_name: api-gateway
     build:
@@ -38,6 +40,7 @@ services:
       - api_net
 
   whiteboard-service:
+    profiles: ["full", "backend"]
     hostname: whiteboard-service
     container_name: whiteboard-service
     build:
@@ -54,6 +57,7 @@ services:
       - api_net
 
   whiteboard-db:
+    profiles: ["full", "backend", "dev"]
     container_name: whiteboard-db
     image: postgres:latest
     environment:
@@ -67,8 +71,9 @@ services:
       - ./config/whiteboard/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - whiteboard_net
-  
+
   session-handler:
+    profiles: ["full", "backend"]
     container_name: session-handler
     build:
       context: ..\session-handler
@@ -77,10 +82,46 @@ services:
     ports:
       - 7220:8080
       - 7221:8081
+    depends_on:
+      - session-db
+      - session-redis
     networks:
-      - sessions_net
-    
+      - session_net
+      - api_net
+
+  session-redis:
+    profiles: ["full", "backend", "dev"]
+    container_name: redis-handler
+    image: redis/redis-stack-server:latest
+    ports:
+      - 7225:6379
+      - 8001:8001
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+    volumes:
+      # - /local-data/:/data
+      - session-redis-data:/data
+    networks:
+      - session_net
+
+  session-db:
+    profiles: ["full", "backend", "dev"]
+    container_name: session-db
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: ${WB_DB}
+      POSTGRES_USER: ${WB_USERNAME}
+      POSTGRES_PASSWORD: ${WB_PASSWORD}
+    ports:
+      - 7226:5432
+    volumes:
+      - session-db-data:/var/lib/postgresql/data
+      # - ./config/session/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - session_net
+
   keycloak:
+    profiles: ["full", "backend", "dev"]
     hostname: keycloak
     container_name: keycloak
     image: quay.io/keycloak/keycloak:24.0.1
@@ -92,7 +133,6 @@ services:
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KEYCLOAK_END_SESSION_ENDPOINT: ${KEYCLOAK_END_SESSION_ENDPOINT}
     ports:
       - 8080:8080
     volumes:
@@ -106,6 +146,7 @@ services:
       - frontend_net
 
   keycloak-db:
+    profiles: ["full", "backend", "dev"]
     container_name: keycloak-db
     image: postgres:latest
     environment:
@@ -128,9 +169,13 @@ networks:
     driver: bridge
   whiteboard_net:
     driver: bridge
+  session_net:
+    driver: bridge
   keycloak_net:
     driver: bridge
 
 volumes:
   keycloak-db-data:
   whiteboard-db-data:
+  session-db-data:
+  session-redis-data:
