@@ -8,7 +8,7 @@ metadata:
     io.kompose.service: whiteboard-service
   name: whiteboard-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       io.kompose.service: whiteboard-service
@@ -26,10 +26,10 @@ spec:
           ports:
             - containerPort: 80
               protocol: TCP
-          volumeMounts:
-          - name: secrets-store-inline
-            mountPath: "/mnt/secrets-store"
-            readOnly: true
+          # volumeMounts:
+          # - name: secrets-store-inline
+          #   mountPath: "/mnt/secrets-store"
+          #   readOnly: true
           env:
             - name: KV_URL
               valueFrom:  
@@ -41,12 +41,12 @@ spec:
                 secretKeyRef:
                   name: whiteboard-service-secrets
                   key: DB_CONNECTION_STRING
-      volumes:
-      - name: secrets-store-inline
-        csi:
-          driver: secrets-store.csi.k8s.io
-          readOnly: true
-          volumeAttributes:
-            secretProviderClass: "azure-cloudbord-kv"
+      # volumes:
+      # - name: secrets-store-inline
+      #   csi:
+      #     driver: secrets-store.csi.k8s.io
+      #     readOnly: true
+      #     volumeAttributes:
+      #       secretProviderClass: "azure-cloudbord-kv"
       hostname: whiteboard-service
       restartPolicy: Always
