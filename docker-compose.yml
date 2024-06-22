@@ -30,6 +30,8 @@ services:
     build:
       context: ..\api-gateway
       dockerfile: Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Testing
     ports:
       - 7200:8080
       - 7201:8081
@@ -52,6 +54,10 @@ services:
       - 7210:80
     environment:
       - ConnectionStrings__Npgsql=${WB_CONNECTION_STRING}
+      - ConnectionStrings__RabbitMQ=${RB_CONNECTION_STRING}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Jwks__Url=${JWKS_URL}
     depends_on:
       whiteboard-db:
         condition: service_healthy
@@ -59,6 +65,7 @@ services:
         condition: service_healthy
     networks:
       - whiteboard_net
+      - keycloak_net
       - api_net
       - rabbitmq_net
 
@@ -124,6 +131,11 @@ services:
     build:
       context: ..\document-store
       dockerfile: Dockerfile
+    environment:
+      - ConnectionStrings__CosmosDB=${DS_CONNECTION_STRING}
+      - CosmosDB__DatabaseName=${DS_DB_NAME}
+      - CosmosDB__ContainerName=${DS_CN_NAME}
+      - ConnectionStrings__RabbitMQ=${RB_CONNECTION_STRING}
     ports:
       - 7230:80
     depends_on: 
@@ -132,6 +144,7 @@ services:
     networks:
       - api_net
       - document_net
+      - rabbitmq_net
 
   keycloak:
     profiles: ["full", "backend", "dev"]
@@ -180,6 +193,9 @@ services:
     container_name: rabbitmq
     hostname: cloudbord
     image: masstransit/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
     ports:
       - 15672:15672
       - 5672:5672
@@ -193,6 +209,8 @@ services:
       - ./config/rabbitmq/data/:/var/lib/rabbitmq/
       - ./config/rabbitmq/log/:/var/log/rabbitmq
       - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - rabbitmq_net
 
 networks:
   frontend_net:
