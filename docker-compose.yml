@@ -35,6 +35,8 @@ services:
       - 7201:8081
     depends_on:
       - whiteboard-service
+      - session-handler
+      - document-store
     networks:
       - frontend_net
       - api_net
@@ -51,7 +53,10 @@ services:
     environment:
       - ConnectionStrings__Npgsql=${WB_CONNECTION_STRING}
     depends_on:
-      - whiteboard-db
+      whiteboard-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - whiteboard_net
       - api_net
@@ -67,6 +72,11 @@ services:
       POSTGRES_PASSWORD: ${WB_PASSWORD}
     ports:
       - 7215:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - whiteboard-db-data:/var/lib/postgresql/data
       - ./config/whiteboard/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -79,13 +89,14 @@ services:
     build:
       context: ..\session-handler
       dockerfile: Dockerfile
-    # environment:
     ports:
       - 7220:8080
       - 7221:8081
     depends_on:
-      - session-db
-      - session-redis
+      session-redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - session_net
       - api_net
@@ -93,7 +104,7 @@ services:
 
   session-redis:
     profiles: ["full", "backend", "dev"]
-    container_name: redis-handler
+    container_name: session-redis
     image: redis/redis-stack:latest
     environment:
       - REDIS_ARGS=--requirepass ${REDIS_PW}
@@ -103,38 +114,24 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
     volumes:
-      # - /local-data/:/data
       - session-redis-data:/data
     networks:
       - session_net
 
-  session-db:
-    profiles: ["full", "backend", "dev"]
-    container_name: session-db
-    image: mongodb/mongodb-community-server
-    environment:
-      - MONGODB_INITDB_ROOT_USERNAME=admin
-      - MONGODB_INITDB_ROOT_PASSWORD=badmin
-      - MONGO_INITDB_DATABASE=boardcontents
+  document-store:
+    profiles: ["full", "backend"]
+    container_name: document-store
+    build:
+      context: ..\document-store
+      dockerfile: Dockerfile
     ports:
-      - 7226:27017
-    volumes:
-      - session-db-data:/data/db
-
-  #   container_name: session-db
-  #   image: postgres:latest
-  #   environment:
-  #     POSTGRES_DB: ${SB_DB}
-  #     POSTGRES_USER: ${SB_USERNAME}
-  #     POSTGRES_PASSWORD: ${SB_PASSWORD}
-  #   ports:
-  #     - 7226:5432
-  #   volumes:
-  #     - session-db-data:/var/lib/postgresql/data
-  #     - ./config/session/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - 7230:80
+    depends_on: 
+      rabbitmq:
+        condition: service_healthy
     networks:
-      - session_net
-  
+      - api_net
+      - document_net
 
   keycloak:
     profiles: ["full", "backend", "dev"]
@@ -150,7 +147,7 @@ services:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
     ports:
-      - 8080:8080
+      - 7290:8080
     volumes:
       - ./config/keycloak:/opt/keycloak/data/import
       - keycloak-db-data:/opt/jboss/keycloak/standalone/data
@@ -180,16 +177,22 @@ services:
 
   rabbitmq:
     profiles: ["full", "backend", "dev"]
-    image: rabbitmq:3.13-management
     container_name: rabbitmq
+    hostname: cloudbord
+    image: masstransit/rabbitmq
     ports:
-      - 5672:5672
       - 15672:15672
-    environment:
-      RABBITMQ_DEFAULT_USER: admin  
-      RABBITMQ_DEFAULT_PASS: badmin 
-    networks:
-      - rabbitmq_net
+      - 5672:5672
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - ./config/rabbitmq/data/:/var/lib/rabbitmq/
+      - ./config/rabbitmq/log/:/var/log/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
 
 networks:
   frontend_net:
@@ -204,9 +207,12 @@ networks:
     driver: bridge
   rabbitmq_net:
     driver: bridge
+  document_net:
+    driver: bridge
 
 volumes:
   keycloak-db-data:
   whiteboard-db-data:
   session-db-data:
   session-redis-data:
+  rabbitmq-data:

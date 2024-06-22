@@ -1,0 +1,26 @@
+#{id => {'%2F_board-delete',rabbit@36998cd80a5b},
+  machine =>
+      {module,rabbit_fifo,
+          #{name => '%2F_board-delete',max_length => undefined,
+            max_bytes => undefined,created => 1719012317885,
+            queue_resource => {resource,<<"/">>,queue,<<"board-delete">>},
+            dead_letter_handler => undefined,
+            become_leader_handler =>
+                {rabbit_quorum_queue,become_leader,
+                    [{resource,<<"/">>,queue,<<"board-delete">>}]},
+            overflow_strategy => drop_head,delivery_limit => undefined,
+            expires => undefined,msg_ttl => undefined,
+            single_active_consumer_on => false,
+            max_in_memory_length => undefined,
+            max_in_memory_bytes => undefined}},
+  membership => voter,friendly_name => "queue 'board-delete' in vhost '/'",
+  cluster_name => '%2F_board-delete',uid => <<"2F_BOAI3LZPUTNRWXJ">>,
+  initial_members => [{'%2F_board-delete',rabbit@36998cd80a5b}],
+  log_init_args =>
+      #{snapshot_interval => 8192,uid => <<"2F_BOAI3LZPUTNRWXJ">>},
+  metrics_key => {resource,<<"/">>,queue,<<"board-delete">>},
+  ra_event_formatter =>
+      {rabbit_quorum_queue,format_ra_event,
+          [{resource,<<"/">>,queue,<<"board-delete">>}]},
+  tick_timeout => 5000,broadcast_time => 100,
+  install_snap_rpc_timeout => 120000,await_condition_timeout => 30000}.

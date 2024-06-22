@@ -35,10 +35,11 @@ spec:
             name: api-gateway
             port:
               number: 7200
+      # Ocelot handling of websockets is broken, requires direct path
       - path: /party
         pathType: Prefix
         backend:
           service:
-            name: session-handler
+            name: api-gateway
             port:
-              number: 7220
+              number: 7200
