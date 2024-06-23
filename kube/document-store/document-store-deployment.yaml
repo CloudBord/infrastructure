@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: document-store
+  template:
+    metadata:
+      labels:
+        app: document-store
+    spec:
+      containers:
+        - env:
+            - name: ConnectionStrings__CosmosDB
+            - name: ConnectionStrings__RabbitMQ
+            - name: CosmosDB__ContainerName
+            - name: CosmosDB__DatabaseName
+          image: cloudbordcontainer.azurecr.io/document-store
+          name: document-store
+          ports:
+            - containerPort: 80
+              protocol: TCP
+      restartPolicy: Always

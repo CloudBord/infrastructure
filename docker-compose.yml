@@ -55,6 +55,10 @@ services:
     environment:
       - ConnectionStrings__Npgsql=${WB_CONNECTION_STRING}
       - ConnectionStrings__RabbitMQ=${RB_CONNECTION_STRING}
+      - RabbitMQ__HostName=${RABBIT_HOST}
+      - RabbitMQ__Port=${RABBIT_PORT}
+      - RabbitMQ__UserName=${RABBIT_USER}
+      - RabbitMQ__Password=${RABBIT_PASS}
       - Jwt__Issuer=${JWT_ISSUER}
       - Jwt__Audience=${JWT_AUDIENCE}
       - Jwks__Url=${JWKS_URL}

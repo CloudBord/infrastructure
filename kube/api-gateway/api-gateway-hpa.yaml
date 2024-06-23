@@ -1,12 +1,12 @@
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
-  name: front-end-hpa
+  name: api-gateway-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: front-end
-  minReplicas: 2
-  maxReplicas: 10
+    name: api-gateway
+  minReplicas: 1
+  maxReplicas: 2
   targetCPUUtilizationPercentage: 50

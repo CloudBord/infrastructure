@@ -1,0 +1,361 @@
+name: infrastructure
+services:
+  api-gateway:
+    profiles:
+      - full
+      - backend
+    build:
+      context: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    depends_on:
+      document-store:
+        condition: service_started
+        required: true
+      session-handler:
+        condition: service_started
+        required: true
+      whiteboard-service:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+    hostname: api-gateway
+    networks:
+      api_net: null
+      frontend_net: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "7200"
+        protocol: tcp
+      - mode: ingress
+        target: 8081
+        published: "7201"
+        protocol: tcp
+  document-store:
+    profiles:
+      - full
+      - backend
+    build:
+      context: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\document-store
+      dockerfile: Dockerfile
+    container_name: document-store
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        required: true
+    environment:
+      ConnectionStrings__CosmosDB: AccountEndpoint=https://cloudbord-document-store.documents.azure.com:443/;AccountKey=jokjS3gU2pxkx9JGLsKnoCQ8ogYTOpoAq9p9SVLKobWIb0NjBCcPbwzSBLTnPMH2rdUfsIpUIjRVACDbE8dkLA==
+      ConnectionStrings__RabbitMQ: amqp://admin:admin@rabbitmq:5672
+      CosmosDB__ContainerName: BoardSnapshots
+      CosmosDB__DatabaseName: DocumentStore
+    networks:
+      api_net: null
+      document_net: null
+      rabbitmq_net: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "7230"
+        protocol: tcp
+  front-end:
+    profiles:
+      - full
+    build:
+      context: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\front-end
+      dockerfile: Dockerfile
+    container_name: front-end
+    depends_on:
+      api-gateway:
+        condition: service_started
+        required: true
+      keycloak:
+        condition: service_started
+        required: true
+    environment:
+      AUTH_SECRET: pOpsfNGEx6LrUGifpD/gPjJPKK+yXHWoBka5ZKLLRHW60GlQubMQLm0koRdOsxaQwmzluOC6mNabpczHKfUBYQ==
+      AUTH_SIGNOUT_URL: http://front-end:3000/api/auth/logout
+      AUTH_URL: http://front-end:3000
+      KEYCLOAK_CLIENT_ID: cloudbord-frontend
+      KEYCLOAK_CLIENT_SECRET: Vm4V2Vj2a9UHF2nOCnk2ycBU9byMUJ66
+      KEYCLOAK_END_SESSION_ENDPOINT: http://keycloak:8080/realms/cloudbord/protocol/openid-connect/logout
+      KEYCLOAK_ISSUER: http://keycloak:8080/realms/cloudbord
+      NEXT_PUBLIC_API_URL: api-gateway:8080
+    networks:
+      frontend_net: null
+      keycloak_net: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+  keycloak:
+    profiles:
+      - full
+      - backend
+      - dev
+    command:
+      - -v
+      - start-dev
+      - --import-realm
+    container_name: keycloak
+    depends_on:
+      keycloak-db:
+        condition: service_started
+        required: true
+    environment:
+      KC_DB: postgres
+      KC_DB_PASSWORD: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db/keycloak
+      KC_DB_USERNAME: postgres
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    hostname: keycloak
+    image: quay.io/keycloak/keycloak:24.0.1
+    networks:
+      api_net: null
+      frontend_net: null
+      keycloak_net: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "7290"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\infrastructure\config\keycloak
+        target: /opt/keycloak/data/import
+        bind:
+          create_host_path: true
+      - type: volume
+        source: keycloak-db-data
+        target: /opt/jboss/keycloak/standalone/data
+        volume: {}
+  keycloak-db:
+    profiles:
+      - full
+      - backend
+      - dev
+    container_name: keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready --username=postgres --dbname=keycloak
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    image: postgres:latest
+    networks:
+      keycloak_net: null
+    volumes:
+      - type: volume
+        source: keycloak-db-data
+        target: /var/lib/postgresql/data
+        volume: {}
+  rabbitmq:
+    profiles:
+      - full
+      - backend
+      - dev
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_USER: admin
+    hostname: cloudbord
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmqctl
+        - status
+      timeout: 5s
+      interval: 10s
+      retries: 3
+      start_period: 30s
+    image: masstransit/rabbitmq
+    networks:
+      rabbitmq_net: null
+    ports:
+      - mode: ingress
+        target: 15672
+        published: "15672"
+        protocol: tcp
+      - mode: ingress
+        target: 5672
+        published: "5672"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: rabbitmq-data
+        target: /var/lib/rabbitmq
+        volume: {}
+      - type: bind
+        source: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\infrastructure\config\rabbitmq\log
+        target: /var/log/rabbitmq
+        bind:
+          create_host_path: true
+  session-handler:
+    profiles:
+      - full
+      - backend
+    build:
+      context: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\session-handler
+      dockerfile: Dockerfile
+    container_name: session-handler
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      session-redis:
+        condition: service_healthy
+        required: true
+    networks:
+      api_net: null
+      rabbitmq_net: null
+      session_net: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "7220"
+        protocol: tcp
+      - mode: ingress
+        target: 8081
+        published: "7221"
+        protocol: tcp
+  session-redis:
+    profiles:
+      - full
+      - backend
+      - dev
+    container_name: session-redis
+    environment:
+      REDIS_ARGS: --requirepass password
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - --raw
+        - incr
+        - ping
+    image: redis/redis-stack:latest
+    networks:
+      session_net: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "7225"
+        protocol: tcp
+      - mode: ingress
+        target: 8001
+        published: "8001"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: session-redis-data
+        target: /data
+        volume: {}
+  whiteboard-db:
+    profiles:
+      - full
+      - backend
+      - dev
+    container_name: whiteboard-db
+    environment:
+      POSTGRES_DB: boards_db
+      POSTGRES_PASSWORD: abcde
+      POSTGRES_USER: root
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: postgres:latest
+    networks:
+      whiteboard_net: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "7215"
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: whiteboard-db-data
+        target: /var/lib/postgresql/data
+        volume: {}
+      - type: bind
+        source: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\infrastructure\config\whiteboard\init.sql
+        target: /docker-entrypoint-initdb.d/init.sql
+        bind:
+          create_host_path: true
+  whiteboard-service:
+    profiles:
+      - full
+      - backend
+    build:
+      context: C:\Users\Lex\Documents\Schoolwork\S6-SA-RB05\s6-cloudbord\whiteboard-service
+      dockerfile: Dockerfile
+    container_name: whiteboard-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        required: true
+      whiteboard-db:
+        condition: service_healthy
+        required: true
+    environment:
+      ConnectionStrings__Npgsql: Host=whiteboard-db;Port=5432;Database=boards_db;Username=root;Password=abcde;
+      ConnectionStrings__RabbitMQ: amqp://admin:admin@rabbitmq:5672
+      Jwks__Url: http://keycloak:8080/realms/cloudbord/protocol/openid-connect/certs
+      Jwt__Audience: cloudbord-backend
+      Jwt__Issuer: http://keycloak:8080/realms/cloudbord/
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Password: admin
+      RabbitMQ__Port: "5672"
+      RabbitMQ__UserName: admin
+    hostname: whiteboard-service
+    networks:
+      api_net: null
+      keycloak_net: null
+      rabbitmq_net: null
+      whiteboard_net: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "7210"
+        protocol: tcp
+networks:
+  api_net:
+    name: infrastructure_api_net
+    driver: bridge
+  document_net:
+    name: infrastructure_document_net
+    driver: bridge
+  frontend_net:
+    name: infrastructure_frontend_net
+    driver: bridge
+  keycloak_net:
+    name: infrastructure_keycloak_net
+    driver: bridge
+  rabbitmq_net:
+    name: infrastructure_rabbitmq_net
+    driver: bridge
+  session_net:
+    name: infrastructure_session_net
+    driver: bridge
+  whiteboard_net:
+    name: infrastructure_whiteboard_net
+    driver: bridge
+volumes:
+  keycloak-db-data:
+    name: infrastructure_keycloak-db-data
+  rabbitmq-data:
+    name: infrastructure_rabbitmq-data
+  session-redis-data:
+    name: infrastructure_session-redis-data
+  whiteboard-db-data:
+    name: infrastructure_whiteboard-db-data

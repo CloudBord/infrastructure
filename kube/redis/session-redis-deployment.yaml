@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: session-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: session-redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: session-redis
+    spec:
+      containers:
+        - env:
+            - name: REDIS_ARGS
+              value: '--requirepass '
+          image: redis/redis-stack:latest
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - --raw
+                - incr
+                - ping
+          name: session-redis
+          ports:
+            - containerPort: 6379
+              protocol: TCP
+            - containerPort: 8001
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /data
+              name: session-redis-data
+      restartPolicy: Always
+      volumes:
+        - name: session-redis-data
+          persistentVolumeClaim:
+            claimName: session-redis-data

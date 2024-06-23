@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-store
+spec:
+  ports:
+    - name: "7230"
+      port: 7230
+      targetPort: 80
+  selector:
+    app: document-store

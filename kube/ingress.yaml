@@ -42,4 +42,4 @@ spec:
           service:
             name: api-gateway
             port:
-              number: 7200
+              number: 7220

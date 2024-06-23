@@ -1,24 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert --profile full -o kube
-    kompose.version: 1.34.0 (cbf2835db)
-  labels:
-    io.kompose.service: whiteboard-service
   name: whiteboard-service
 spec:
   replicas: 2
   selector:
     matchLabels:
-      io.kompose.service: whiteboard-service
+      app: whiteboard-service
   template:
     metadata:
-      annotations:
-        kompose.cmd: C:\ProgramData\chocolatey\lib\kubernetes-kompose\tools\kompose.exe convert --profile full -o kube
-        kompose.version: 1.34.0 (cbf2835db)
       labels:
-        io.kompose.service: whiteboard-service
+        app: whiteboard-service
     spec:
       containers:
         - name: whiteboard-service
@@ -41,6 +33,46 @@ spec:
                 secretKeyRef:
                   name: whiteboard-service-secrets
                   key: DB_CONNECTION_STRING
+            - name: ConnectionStrings__RabbitMQ
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: RB_CONNECTION_STRING
+            - name: Jwks__Url
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: JWKS_URL
+            - name: Jwt__Audience
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: JWT_AUDIENCE
+            - name: Jwt__Issuer
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: JWT_ISSUER
+            - name: RabbitMQ__HostName
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: RABBIT_HOST
+            - name: RabbitMQ__Password
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: RABBIT_PASS
+            - name: RabbitMQ__Port
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: RABBIT_PORT
+            - name: RabbitMQ__UserName
+              valueFrom:
+                secretKeyRef:
+                  name: whiteboard-service-secrets
+                  key: RABBIT_USER
       # volumes:
       # - name: secrets-store-inline
       #   csi:
