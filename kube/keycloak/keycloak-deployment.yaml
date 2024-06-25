@@ -49,17 +49,20 @@ spec:
                   key: KEYCLOAK_ADMIN_PASSWORD
             - name: KC_PROXY
               value: 'edge'
+            - name: KC_STRICT_HOSTNAME
+              value: 'false'
           image: quay.io/keycloak/keycloak:24.0.1
           name: keycloak
           ports:
             - containerPort: 8080
               protocol: TCP
           volumeMounts:
-            - mountPath: /opt/jboss/keycloak/standalone/data
-              name: keycloak-db-data
+            - mountPath: /var/lib/postgresql/data #/opt/jboss/keycloak/standalone/data
+              name: keycloak-db-data  
+              readOnly: false
       hostname: keycloak
       restartPolicy: Always
       volumes:
         - name: keycloak-db-data
           persistentVolumeClaim:
-            claimName: keycloak-db-data
+            claimName: keycloak-db-dataclaim

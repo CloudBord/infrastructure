@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: back-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  tls:
+    - hosts:
+      - api.cloudbord.lexert.dev
+      secretName: tls-secret
+  ingressClassName: nginx
+  rules:
+  - host: api.cloudbord.lexert.dev
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 7200
+      # Ocelot handling of websockets is broken, requires direct path
+      - path: /party
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 7220

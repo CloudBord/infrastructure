@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "25m"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  tls:
+    - hosts:
+      - auth.cloudbord.lexert.dev
+      secretName: tls-secret
+  ingressClassName: nginx
+  rules:
+  - host: auth.cloudbord.lexert.dev
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: keycloak
+            port:
+              number: 7290

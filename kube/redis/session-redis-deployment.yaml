@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: session-redis
 spec:
@@ -7,26 +7,23 @@ spec:
   selector:
     matchLabels:
       app: session-redis
-  strategy:
-    type: Recreate
+  serviceName: session-redis
   template:
     metadata:
       labels:
         app: session-redis
     spec:
       containers:
-        - env:
-            - name: REDIS_ARGS
-              value: '--requirepass '
+        - name: session-redis
           image: redis/redis-stack:latest
           livenessProbe:
             exec:
               command:
+                - --requirepass
                 - redis-cli
                 - --raw
                 - incr
                 - ping
-          name: session-redis
           ports:
             - containerPort: 6379
               protocol: TCP

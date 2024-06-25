@@ -2,5 +2,8 @@ kube/**/*[Ss]ecrets.yaml
 kube/**/*[Ss]ecret.yaml
 kube/**/[Kk]eycloak*[Ss]ecret.yaml
 kube/**/[Kk]eycloak*[Cc]onfigmap.yaml
+tls
+*.pem
+*.crt
 secrets
 .env
